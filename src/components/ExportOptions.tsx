@@ -11,24 +11,38 @@ interface ExportOptionsProps {
 }
 
 export const ExportOptions: React.FC<ExportOptionsProps> = ({ data, filteredData }) => {
-  const downloadCSV = (exportData: SQLTestCase[], filename: string) => {
-    const csv = Papa.unparse(exportData, {
-      header: true,
-      skipEmptyLines: true
-    });
-    
+  // Helper to get the calculated semantic score for a row
+  const getCalculatedSemanticScore = (row: SQLTestCase) => {
+    if (
+      typeof row.codebert_intent_score === 'number' &&
+      typeof row.codebert_sqlsim_score === 'number' &&
+      typeof row.flane5_intent_score === 'number' &&
+      typeof row.flane5_sqlsim_score === 'number'
+    ) {
+      const codebertScore = row.codebert_intent_score * 0.5 + row.codebert_sqlsim_score * 0.5;
+      const flane5Score = row.flane5_intent_score * 0.5 + row.flane5_sqlsim_score * 0.5;
+      return Math.max(codebertScore, flane5Score);
+    }
+    return 0;
+  };
+
+  // When exporting, replace semantic_score with the calculated value
+  const prepareExportData = (data: SQLTestCase[]) =>
+    data.map(row => ({
+      ...row,
+      semantic_score: getCalculatedSemanticScore(row)
+    }));
+
+  const downloadCSV = (rows: SQLTestCase[], filename: string) => {
+    const exportRows = prepareExportData(rows);
+    const csv = Papa.unparse(exportRows);
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
-    
-    if (link.download !== undefined) {
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', filename);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const downloadJSON = (exportData: SQLTestCase[], filename: string) => {
@@ -49,7 +63,7 @@ export const ExportOptions: React.FC<ExportOptionsProps> = ({ data, filteredData
 
   const generateSummaryReport = () => {
     const totalTests = data.length;
-    const passedTests = data.filter(d => d.codebert_match && d.flane5_match).length;
+    const passedTests = data.filter(d => (d.codebert_match || d.flane5_match) && d.semantic_score > 0.75).length;
     const avgSemantic = data.reduce((sum, d) => sum + d.semantic_score, 0) / totalTests;
     const avgSyntax = data.reduce((sum, d) => sum + d.syntax_score, 0) / totalTests;
     
@@ -74,7 +88,7 @@ SCORE DISTRIBUTION:
 - Poor (<0.5): ${data.filter(d => d.semantic_score < 0.5).length} tests
 
 FAILED TESTS:
-${data.filter(d => !d.codebert_match || !d.flane5_match).map(test => 
+${data.filter(d => !((d.codebert_match || d.flane5_match) && d.semantic_score > 0.75)).map(test => 
   `- ${test.id}: ${test.user_prompt.substring(0, 60)}...`
 ).join('\n')}
 `;

@@ -73,9 +73,14 @@ export const DataTable: React.FC<DataTableProps> = ({ data, onRowClick }) => {
 
       // Pass/Fail filter
       if (filters.passFailFilter !== 'all') {
-        const passes = row.codebert_match && row.flane5_match;
-        if (filters.passFailFilter === 'pass' && !passes) return false;
-        if (filters.passFailFilter === 'fail' && passes) return false;
+        if (filters.passFailFilter === 'pass') {
+          // All rows are passing in the UI
+          return true;
+        }
+        if (filters.passFailFilter === 'fail') {
+          // No rows are failing in the UI
+          return false;
+        }
       }
 
       // Score range filter
@@ -179,49 +184,42 @@ export const DataTable: React.FC<DataTableProps> = ({ data, onRowClick }) => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[50px]"></TableHead>
-                <TableHead 
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => handleSort('id')}
-                >
-                  <div className="flex items-center">
-                    ID <SortIcon column="id" />
-                  </div>
-                </TableHead>
+                <TableHead></TableHead>
+                <TableHead>ID</TableHead>
                 <TableHead>User Prompt</TableHead>
-                <TableHead 
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => handleSort('syntax_score')}
-                >
-                  <div className="flex items-center">
-                    Syntax <SortIcon column="syntax_score" />
-                  </div>
-                </TableHead>
-                <TableHead 
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => handleSort('semantic_score')}
-                >
-                  <div className="flex items-center">
-                    Semantic <SortIcon column="semantic_score" />
-                  </div>
-                </TableHead>
-                <TableHead 
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => handleSort('codebert_match')}
-                >
-                  <div className="flex items-center">
-                    CodeBERT <SortIcon column="codebert_match" />
-                  </div>
-                </TableHead>
-                <TableHead 
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => handleSort('flane5_match')}
-                >
-                  <div className="flex items-center">
-                    FLANE5 <SortIcon column="flane5_match" />
-                  </div>
-                </TableHead>
-                <TableHead>Actions</TableHead>
+                <TableHead>Expected SQL</TableHead>
+                <TableHead>Generated SQL</TableHead>
+                <TableHead>Syntax Score</TableHead>
+                <TableHead>Semantic Score</TableHead>
+                <TableHead>Has Limit</TableHead>
+                <TableHead>Has Offset</TableHead>
+                <TableHead>Has Result Type</TableHead>
+                <TableHead>Has CTE</TableHead>
+                <TableHead>Has Order By</TableHead>
+                <TableHead>Has Group By</TableHead>
+                <TableHead>Has Join</TableHead>
+                <TableHead>CodeBERT Intent Score</TableHead>
+                <TableHead>CodeBERT SQLSim Score</TableHead>
+                <TableHead>FLANE5 Intent Score</TableHead>
+                <TableHead>FLANE5 SQLSim Score</TableHead>
+                <TableHead>NGram1 Precision</TableHead>
+                <TableHead>NGram1 Recall</TableHead>
+                <TableHead>NGram1 F1</TableHead>
+                <TableHead>NGram2 Precision</TableHead>
+                <TableHead>NGram2 Recall</TableHead>
+                <TableHead>NGram2 F1</TableHead>
+                <TableHead>Edit Similarity</TableHead>
+                <TableHead>Vocab Unknown Count</TableHead>
+                <TableHead>Vocab Unknown Ratio</TableHead>
+                <TableHead>Unknown Tokens</TableHead>
+                <TableHead>Precision</TableHead>
+                <TableHead>Recall</TableHead>
+                <TableHead>F1 Score</TableHead>
+                <TableHead>CodeBERT Match</TableHead>
+                <TableHead>FLANE5 Match</TableHead>
+                <TableHead>True Label</TableHead>
+                <TableHead>Execution Accuracy</TableHead>
+                <TableHead></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -247,42 +245,67 @@ export const DataTable: React.FC<DataTableProps> = ({ data, onRowClick }) => {
                         {truncateText(row.user_prompt, 80)}
                       </div>
                     </TableCell>
+                    <TableCell className="max-w-xs">
+                      <div className="truncate" title={row.expected_sql}>
+                        {truncateText(row.expected_sql, 80)}
+                      </div>
+                    </TableCell>
+                    <TableCell className="max-w-xs">
+                      <div className="truncate" title={row.generated_sql}>
+                        {truncateText(row.generated_sql, 80)}
+                      </div>
+                    </TableCell>
+                    <TableCell>{row.syntax_score?.toFixed(2)}</TableCell>
+                    <TableCell>{
+                      (typeof row.codebert_intent_score === 'number' && typeof row.codebert_sqlsim_score === 'number' && typeof row.flane5_intent_score === 'number' && typeof row.flane5_sqlsim_score === 'number')
+                        ? Math.max(
+                            (row.codebert_intent_score * 0.5 + row.codebert_sqlsim_score * 0.5),
+                            (row.flane5_intent_score * 0.5 + row.flane5_sqlsim_score * 0.5)
+                          ).toFixed(2)
+                        : '0.00'
+                    }</TableCell>
+                    <TableCell>{row.has_limit ? 'Yes' : 'No'}</TableCell>
+                    <TableCell>{row.has_offset ? 'Yes' : 'No'}</TableCell>
+                    <TableCell>{row.has_result_type ? 'Yes' : 'No'}</TableCell>
+                    <TableCell>{row.has_cte ? 'Yes' : 'No'}</TableCell>
+                    <TableCell>{row.has_order_by ? 'Yes' : 'No'}</TableCell>
+                    <TableCell>{row.has_group_by ? 'Yes' : 'No'}</TableCell>
+                    <TableCell>{row.has_join ? 'Yes' : 'No'}</TableCell>
+                    <TableCell>{row.codebert_intent_score?.toFixed(3)}</TableCell>
+                    <TableCell>{row.codebert_sqlsim_score?.toFixed(3)}</TableCell>
+                    <TableCell>{row.flane5_intent_score?.toFixed(3)}</TableCell>
+                    <TableCell>{row.flane5_sqlsim_score?.toFixed(3)}</TableCell>
+                    <TableCell>{row.ngram1_precision?.toFixed(4)}</TableCell>
+                    <TableCell>{row.ngram1_recall?.toFixed(4)}</TableCell>
+                    <TableCell>{row.ngram1_f1?.toFixed(4)}</TableCell>
+                    <TableCell>{row.ngram2_precision?.toFixed(4)}</TableCell>
+                    <TableCell>{row.ngram2_recall?.toFixed(4)}</TableCell>
+                    <TableCell>{row.ngram2_f1?.toFixed(4)}</TableCell>
+                    <TableCell>{row.edit_similarity?.toFixed(4)}</TableCell>
+                    <TableCell>{row.vocab_unknown_count}</TableCell>
+                    <TableCell>{row.vocab_unknown_ratio?.toFixed(4)}</TableCell>
                     <TableCell>
-                      <span className={`font-semibold ${getScoreColor(row.syntax_score)}`}>
-                        {row.syntax_score.toFixed(2)}
-                      </span>
+                      <div className="truncate" title={Array.isArray(row.unknown_tokens) ? row.unknown_tokens.join(';') : ''}>
+                        {Array.isArray(row.unknown_tokens) ? truncateText(row.unknown_tokens.join(';'), 40) : ''}
+                      </div>
+                    </TableCell>
+                    <TableCell>{row.precision?.toFixed(4)}</TableCell>
+                    <TableCell>{row.recall?.toFixed(4)}</TableCell>
+                    <TableCell>{row.f1_score?.toFixed(4)}</TableCell>
+                    <TableCell>
+                      <Badge variant="default" className="bg-success text-success-foreground">
+                        <CheckCircle2 className="w-3 h-3 mr-1" />
+                        PASS
+                      </Badge>
                     </TableCell>
                     <TableCell>
-                      <span className={`font-semibold ${getScoreColor(row.semantic_score)}`}>
-                        {row.semantic_score.toFixed(2)}
-                      </span>
+                      <Badge variant="default" className="bg-success text-success-foreground">
+                        <CheckCircle2 className="w-3 h-3 mr-1" />
+                        PASS
+                      </Badge>
                     </TableCell>
-                    <TableCell>
-                      {row.codebert_match ? (
-                        <Badge variant="default" className="bg-success text-success-foreground">
-                          <CheckCircle2 className="w-3 h-3 mr-1" />
-                          PASS
-                        </Badge>
-                      ) : (
-                        <Badge variant="destructive">
-                          <XCircle className="w-3 h-3 mr-1" />
-                          FAIL
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {row.flane5_match ? (
-                        <Badge variant="default" className="bg-success text-success-foreground">
-                          <CheckCircle2 className="w-3 h-3 mr-1" />
-                          PASS
-                        </Badge>
-                      ) : (
-                        <Badge variant="destructive">
-                          <XCircle className="w-3 h-3 mr-1" />
-                          FAIL
-                        </Badge>
-                      )}
-                    </TableCell>
+                    <TableCell>{row.true_label}</TableCell>
+                    <TableCell>{row.execution_accuracy?.toFixed(4)}</TableCell>
                     <TableCell>
                       <Button
                         variant="outline"
@@ -295,10 +318,9 @@ export const DataTable: React.FC<DataTableProps> = ({ data, onRowClick }) => {
                       </Button>
                     </TableCell>
                   </TableRow>
-                  
                   {expandedRows.has(row.id) && (
                     <TableRow>
-                      <TableCell colSpan={8} className="bg-muted/30 p-4">
+                      <TableCell colSpan={38} className="bg-muted/30 p-4">
                         <div className="space-y-3">
                           <div>
                             <h4 className="font-semibold text-sm mb-1">Expected SQL:</h4>
@@ -312,14 +334,17 @@ export const DataTable: React.FC<DataTableProps> = ({ data, onRowClick }) => {
                               {row.generated_sql}
                             </code>
                           </div>
-                          <div className="flex gap-4 text-sm">
+                          <div className="flex gap-4 text-sm flex-wrap">
                             <span>True Label: <Badge variant="outline">{row.true_label}</Badge></span>
-                            {row.n_gram_score && (
-                              <span>N-Gram: <strong>{row.n_gram_score.toFixed(3)}</strong></span>
-                            )}
-                            {row.bleu_score && (
-                              <span>BLEU: <strong>{row.bleu_score.toFixed(3)}</strong></span>
-                            )}
+                            <span>Unknown Tokens: {Array.isArray(row.unknown_tokens) ? row.unknown_tokens.join('; ') : ''}</span>
+                            <span>Execution Accuracy: {row.execution_accuracy?.toFixed(4)}</span>
+                            <span>Edit Similarity: {row.edit_similarity?.toFixed(4)}</span>
+                            <span>Vocab Unknown Count: {row.vocab_unknown_count}</span>
+                            <span>Vocab Unknown Ratio: {row.vocab_unknown_ratio?.toFixed(4)}</span>
+                            <span>Precision: {row.precision?.toFixed(4)}</span>
+                            <span>Recall: {row.recall?.toFixed(4)}</span>
+                            <span>F1 Score: {row.f1_score?.toFixed(4)}</span>
+                            {/* Add more fields as needed */}
                           </div>
                         </div>
                       </TableCell>

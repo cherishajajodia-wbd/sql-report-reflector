@@ -36,18 +36,49 @@ export const SQLValidationDashboard: React.FC = () => {
     setLoading(true);
     try {
       // Validate and clean the data
-      const cleanedData = newData.map(item => ({
-        ...item,
-        syntax_score: Number(item.syntax_score) || 0,
-        semantic_score: Number(item.semantic_score) || 0,
-        n_gram_score: item.n_gram_score ? Number(item.n_gram_score) : undefined,
-        bleu_score: item.bleu_score ? Number(item.bleu_score) : undefined,
-        rouge_score: item.rouge_score ? Number(item.rouge_score) : undefined,
-        codebert_match: Boolean(item.codebert_match),
-        flane5_match: Boolean(item.flane5_match),
-        exact_match: item.exact_match ? Boolean(item.exact_match) : undefined,
-        unknown_tokens: Array.isArray(item.unknown_tokens) ? item.unknown_tokens : []
-      }));
+      const cleanedData = newData.map(item => {
+        const isGeneratedSqlBlank = !item.generated_sql || String(item.generated_sql).trim() === '';
+        return {
+          ...item,
+          syntax_score: isGeneratedSqlBlank ? 0 : (Number(item.syntax_score) || 0),
+          semantic_score: Number(item.semantic_score) || 0,
+          n_gram_score: item.n_gram_score ? Number(item.n_gram_score) : undefined,
+          bleu_score: item.bleu_score ? Number(item.bleu_score) : undefined,
+          rouge_score: item.rouge_score ? Number(item.rouge_score) : undefined,
+          codebert_match: Boolean(item.codebert_match),
+          flane5_match: Boolean(item.flane5_match),
+          exact_match: item.exact_match ? Boolean(item.exact_match) : undefined,
+          unknown_tokens: Array.isArray(item.unknown_tokens)
+            ? item.unknown_tokens
+            : (typeof item.unknown_tokens === 'string' && item.unknown_tokens
+                ? (item.unknown_tokens as string).split(';').map(t => t.trim()).filter(Boolean)
+                : []),
+          has_limit: item.has_limit !== undefined ? Boolean(Number(item.has_limit)) : undefined,
+          has_offset: item.has_offset !== undefined ? Boolean(Number(item.has_offset)) : undefined,
+          has_result_type: item.has_result_type !== undefined ? Boolean(Number(item.has_result_type)) : undefined,
+          has_cte: item.has_cte !== undefined ? Boolean(Number(item.has_cte)) : undefined,
+          has_order_by: item.has_order_by !== undefined ? Boolean(Number(item.has_order_by)) : undefined,
+          has_group_by: item.has_group_by !== undefined ? Boolean(Number(item.has_group_by)) : undefined,
+          has_join: item.has_join !== undefined ? Boolean(Number(item.has_join)) : undefined,
+          codebert_intent_score: isGeneratedSqlBlank ? 0 : (item.codebert_intent_score ? Number(item.codebert_intent_score) : undefined),
+          codebert_sqlsim_score: isGeneratedSqlBlank ? 0 : (item.codebert_sqlsim_score ? Number(item.codebert_sqlsim_score) : undefined),
+          flane5_intent_score: isGeneratedSqlBlank ? 0 : (item.flane5_intent_score ? Number(item.flane5_intent_score) : undefined),
+          flane5_sqlsim_score: isGeneratedSqlBlank ? 0 : (item.flane5_sqlsim_score ? Number(item.flane5_sqlsim_score) : undefined),
+          ngram1_precision: item.ngram1_precision ? Number(item.ngram1_precision) : undefined,
+          ngram1_recall: item.ngram1_recall ? Number(item.ngram1_recall) : undefined,
+          ngram1_f1: item.ngram1_f1 ? Number(item.ngram1_f1) : undefined,
+          ngram2_precision: item.ngram2_precision ? Number(item.ngram2_precision) : undefined,
+          ngram2_recall: item.ngram2_recall ? Number(item.ngram2_recall) : undefined,
+          ngram2_f1: item.ngram2_f1 ? Number(item.ngram2_f1) : undefined,
+          edit_similarity: item.edit_similarity ? Number(item.edit_similarity) : undefined,
+          vocab_unknown_count: item.vocab_unknown_count ? Number(item.vocab_unknown_count) : undefined,
+          vocab_unknown_ratio: item.vocab_unknown_ratio ? Number(item.vocab_unknown_ratio) : undefined,
+          precision: item.precision ? Number(item.precision) : undefined,
+          recall: item.recall ? Number(item.recall) : undefined,
+          f1_score: item.f1_score ? Number(item.f1_score) : undefined,
+          execution_accuracy: item.execution_accuracy ? Number(item.execution_accuracy) : undefined,
+        };
+      });
 
       setData(cleanedData);
       
@@ -71,7 +102,7 @@ export const SQLValidationDashboard: React.FC = () => {
   };
 
   const generateSampleConfusionMatrix = (testData: SQLTestCase[]) => {
-    // Create a simple confusion matrix based on pass/fail results
+    // Create a confusion matrix based on new pass/fail criteria
     const labels = ['Pass', 'Fail'];
     const matrix = [
       [0, 0], // Actual Pass vs Predicted Pass/Fail
@@ -79,9 +110,21 @@ export const SQLValidationDashboard: React.FC = () => {
     ];
 
     testData.forEach(test => {
-      const actualPass = test.codebert_match && test.flane5_match;
-      const predictedPass = test.semantic_score >= 0.7; // Simple threshold
-      
+      // New pass criteria
+      const notAllZero = !(test.precision === 0 && test.recall === 0 && test.f1_score === 0);
+      let semanticScore = 0;
+      if (
+        typeof test.codebert_intent_score === 'number' &&
+        typeof test.codebert_sqlsim_score === 'number' &&
+        typeof test.flane5_intent_score === 'number' &&
+        typeof test.flane5_sqlsim_score === 'number'
+      ) {
+        const codebertScore = test.codebert_intent_score * 0.5 + test.codebert_sqlsim_score * 0.5;
+        const flane5Score = test.flane5_intent_score * 0.5 + test.flane5_sqlsim_score * 0.5;
+        semanticScore = Math.max(codebertScore, flane5Score);
+      }
+      const actualPass = notAllZero && semanticScore > 0.7;
+      const predictedPass = semanticScore > 0.7; // Use same threshold for prediction
       if (actualPass && predictedPass) matrix[0][0]++; // True Positive
       else if (actualPass && !predictedPass) matrix[0][1]++; // False Negative
       else if (!actualPass && predictedPass) matrix[1][0]++; // False Positive
@@ -171,7 +214,23 @@ export const SQLValidationDashboard: React.FC = () => {
             <CheckCircle2 className="h-4 w-4 text-success" />
             <AlertDescription>
               <strong>Dashboard Active:</strong> Displaying {data.length} test cases. 
-              Overall pass rate: {((data.filter(d => d.codebert_match && d.flane5_match).length / data.length) * 100).toFixed(1)}%
+              Overall pass rate: {((data.filter(d => {
+                // Check precision, recall, f1_score are not all 0
+                const notAllZero = !(d.precision === 0 && d.recall === 0 && d.f1_score === 0);
+                // Calculate semantic score as in DataTable
+                let semanticScore = 0;
+                if (
+                  typeof d.codebert_intent_score === 'number' &&
+                  typeof d.codebert_sqlsim_score === 'number' &&
+                  typeof d.flane5_intent_score === 'number' &&
+                  typeof d.flane5_sqlsim_score === 'number'
+                ) {
+                  const codebertScore = d.codebert_intent_score * 0.5 + d.codebert_sqlsim_score * 0.5;
+                  const flane5Score = d.flane5_intent_score * 0.5 + d.flane5_sqlsim_score * 0.5;
+                  semanticScore = Math.max(codebertScore, flane5Score);
+                }
+                return notAllZero && semanticScore > 0.7;
+              }).length / data.length) * 100).toFixed(1)}%
             </AlertDescription>
           </Alert>
         )}

@@ -14,9 +14,33 @@ export interface SQLTestCase {
   bleu_score?: number;
   rouge_score?: number;
   exact_match?: boolean;
-  execution_accuracy?: number;
   token_count?: number;
   unknown_tokens?: string[];
+  // Additional fields from CSV
+  has_limit?: boolean;
+  has_offset?: boolean;
+  has_result_type?: boolean;
+  has_cte?: boolean;
+  has_order_by?: boolean;
+  has_group_by?: boolean;
+  has_join?: boolean;
+  codebert_intent_score?: number;
+  codebert_sqlsim_score?: number;
+  flane5_intent_score?: number;
+  flane5_sqlsim_score?: number;
+  ngram1_precision?: number;
+  ngram1_recall?: number;
+  ngram1_f1?: number;
+  ngram2_precision?: number;
+  ngram2_recall?: number;
+  ngram2_f1?: number;
+  edit_similarity?: number;
+  vocab_unknown_count?: number;
+  vocab_unknown_ratio?: number;
+  precision?: number;
+  recall?: number;
+  f1_score?: number;
+  execution_accuracy?: number;
 }
 
 export interface ValidationSummary {
